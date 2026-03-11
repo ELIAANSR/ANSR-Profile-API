@@ -23,11 +23,7 @@ app = FastAPI(title="ANSR Profile API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://ansr-profile.vercel.app",
-        "https://ansr-pulse.vercel.app",
-        "http://localhost:5173",
-    ],
+    allow_origins=["*"],
     allow_methods=["POST", "GET"],
     allow_headers=["*"],
 )
