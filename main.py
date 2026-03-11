@@ -58,53 +58,23 @@ class HealthResponse(BaseModel):
 def send_email_with_pdf(to_email: str, name: str, pdf_path: str, profile_name: str):
     """Send PDF as email attachment via Resend API."""
     if not RESEND_API_KEY:
-        logger.warning("RESEND_API_KEY not set — skipping email")
+        logger.warning("RESEND_API_KEY not set")
         return False
-    
     try:
-        import base64
-        import urllib.request
-        
-        with open(pdf_path, "rb") as f:
-            pdf_data = base64.b64encode(f.read()).decode()
-        
+        import resend
+        resend.api_key = RESEND_API_KEY
         first_name = name.split()[0] if name else "there"
-        
-        email_body = f"""<div style="font-family: Georgia, serif; color: #3A3530; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
-  <p style="font-size: 18px; letter-spacing: 0.3em; color: #1A1714; text-align: center; margin-bottom: 32px;">E L I A</p>
-  <p style="font-size: 15px; line-height: 1.8; margin-bottom: 20px;">{first_name},</p>
-  <p style="font-size: 15px; line-height: 1.8; margin-bottom: 20px;">Your ANSR Profile is attached.</p>
-  <p style="font-size: 15px; line-height: 1.8; margin-bottom: 32px;">Read it slowly. Your nervous system found its way here. That matters.</p>
-  <p style="font-size: 13px; color: #B0A494; line-height: 1.7; margin-bottom: 8px;">— Alexandre Olive</p>
-  <p style="font-size: 13px; color: #B0A494; font-style: italic;">ELIA — Beauty That Heals</p>
-</div>"""
-        
-        payload = {
+        with open(pdf_path, "rb") as f:
+            pdf_data = f.read()
+        r = resend.Emails.send({
             "from": FROM_EMAIL,
             "to": [to_email],
-            "subject": f"Your ANSR Profile — {name}",
-            "html": email_body,
-            "attachments": [{
-                "filename": f"ANSR-Profile-{name.replace(' ', '-')}.pdf",
-                "content": pdf_data,
-                "content_type": "application/pdf"
-            }]
-        }
-        
-        req = urllib.request.Request(
-            "https://api.resend.com/emails",
-            data=json.dumps(payload).encode(),
-            headers={
-                "Authorization": f"Bearer {RESEND_API_KEY}",
-                "Content-Type": "application/json"
-            }
-        )
-        
-        with urllib.request.urlopen(req) as resp:
-            result = json.loads(resp.read())
-            logger.info(f"Email sent to {to_email}: {result}")
-            return True
-            
+            "subject": f"Your ANSR Profile",
+            "html": f'<div style="font-family:Georgia,serif;color:#3A3530;max-width:480px;margin:0 auto;padding:40px 20px"><p style="font-size:18px;letter-spacing:0.3em;text-align:center;margin-bottom:32px">E L I A</p><p style="font-size:15px;line-height:1.8;margin-bottom:20px">{first_name},</p><p style="font-size:15px;line-height:1.8;margin-bottom:20px">Your ANSR Profile is attached.</p><p style="font-size:15px;line-height:1.8;margin-bottom:32px">Read it slowly. Your nervous system found its way here.</p><p style="font-size:13px;color:#B0A494">Alexandre Olive<br><em>ELIA — Beauty That Heals</em></p></div>',
+            "attachments": [{"filename": f"ANSR-Profile-{name.replace(' ','-')}.pdf", "content": list(pdf_data)}],
+        })
+        logger.info(f"Email sent to {to_email}: {r}")
+        return True
     except Exception as e:
         logger.error(f"Email failed for {to_email}: {e}")
         return False
